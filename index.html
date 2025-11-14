@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Snake Retro Square Fixed</title>
+<title>Retro Snake ES3 Fixed</title>
 <style>
   body { margin:0; padding:0; background:#000; color:#0f0; text-align:center; font-family:monospace; }
   canvas { display:block; margin:20px auto; background:#111; }
@@ -10,135 +10,143 @@
 </style>
 </head>
 <body>
-<h1>Snake Retro</h1>
+<h1>Snake Retro ES3</h1>
 <canvas id="gameCanvas"></canvas>
 <div id="scoreboard">
   <span id="score">Score: 0</span> &nbsp;|&nbsp; 
   <span id="highscore">Highscore: 0</span>
 </div>
 <script>
-var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 var canvas = document.getElementById('gameCanvas');
 var ctx = canvas.getContext('2d');
 var gridSize = 10;
-var size = isMobile ? Math.min(window.innerWidth, window.innerHeight*0.6) : 240;
-canvas.width = size;
-canvas.height = size;
+var canvasSize = 240;
+canvas.width = canvasSize;
+canvas.height = canvasSize;
 
 var snake, dx, dy, apple, score, highscore, gameOver;
+
+// Initialize highscore to 0
 highscore = 0;
 
-// Mobile swipe controls
+// Mobile detection
+var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 var touchStartX, touchStartY;
-if(isMobile){
-  canvas.addEventListener('touchstart', function(e){
-    var t = e.touches[0];
-    touchStartX = t.clientX; touchStartY = t.clientY;
-  });
-  canvas.addEventListener('touchend', function(e){
-    var t = e.changedTouches[0];
-    var dxTouch = t.clientX - touchStartX;
-    var dyTouch = t.clientY - touchStartY;
-    if(Math.abs(dxTouch) > Math.abs(dyTouch)){
-      if(dxTouch>0 && dx===0){dx=1; dy=0;}
-      if(dxTouch<0 && dx===0){dx=-1; dy=0;}
-    }else{
-      if(dyTouch>0 && dy===0){dx=0; dy=1;}
-      if(dyTouch<0 && dy===0){dx=0; dy=-1;}
-    }
-  });
+
+function initGame(){
+  snake = [{x:Math.floor(canvas.width/(2*gridSize)), y:Math.floor(canvas.height/(2*gridSize))}];
+  dx = 1; dy = 0;
+  score = 0;
+  gameOver = false;
+  apple = generateApple();
+  updateScore();
 }
 
-// Keyboard controls
-document.onkeydown = function(e){
-  if(e.keyCode==37 && dx===0){dx=-1; dy=0;}
-  if(e.keyCode==38 && dy===0){dx=0; dy=-1;}
-  if(e.keyCode==39 && dx===0){dx=1; dy=0;}
-  if(e.keyCode==40 && dy===0){dx=0; dy=1;}
-};
-
-// Initialize or reset game
-function resetGame(){
-  snake=[{x:Math.floor(canvas.width/(2*gridSize)), y:Math.floor(canvas.height/(2*gridSize))}];
-  dx=1; dy=0;
-  score=0;
-  gameOver=false;
-
-  // Place apple not on snake
-  do {
-    apple={x:Math.floor(Math.random()*(canvas.width/gridSize)), y:Math.floor(Math.random()*(canvas.height/gridSize))};
-  } while(snake.some(seg => seg.x===apple.x && seg.y===apple.y));
-
-  updateScore();
+// Generate apple not on snake
+function generateApple(){
+  var a, i, safe;
+  do{
+    safe = true;
+    a = {x: Math.floor(Math.random()*(canvas.width/gridSize)), y: Math.floor(Math.random()*(canvas.height/gridSize))};
+    for(i=0;i<snake.length;i++){
+      if(snake[i].x===a.x && snake[i].y===a.y){ safe=false; break; }
+    }
+  }while(!safe);
+  return a;
 }
 
 // Update scoreboard
 function updateScore(){
-  document.getElementById('score').textContent = "Score: "+score;
-  document.getElementById('highscore').textContent = "Highscore: "+highscore;
+  document.getElementById('score').innerHTML = "Score: "+score;
+  document.getElementById('highscore').innerHTML = "Highscore: "+highscore;
 }
 
-resetGame();
+// Keyboard controls
+document.onkeydown = function(e){
+  if(e.keyCode==37 && dx===0){ dx=-1; dy=0; }
+  if(e.keyCode==38 && dy===0){ dx=0; dy=-1; }
+  if(e.keyCode==39 && dx===0){ dx=1; dy=0; }
+  if(e.keyCode==40 && dy===0){ dx=0; dy=1; }
+};
+
+// Mobile swipe
+if(isMobile){
+  canvas.ontouchstart = function(e){
+    var t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+  };
+  canvas.ontouchend = function(e){
+    var t = e.changedTouches[0];
+    var dxTouch = t.clientX - touchStartX;
+    var dyTouch = t.clientY - touchStartY;
+    if(Math.abs(dxTouch)>Math.abs(dyTouch)){
+      if(dxTouch>0 && dx===0){ dx=1; dy=0; }
+      if(dxTouch<0 && dx===0){ dx=-1; dy=0; }
+    } else {
+      if(dyTouch>0 && dy===0){ dx=0; dy=1; }
+      if(dyTouch<0 && dy===0){ dx=0; dy=-1; }
+    }
+  };
+}
 
 // Game loop
 function gameLoop(){
   if(!gameOver){
     var head = {x: snake[0].x + dx, y: snake[0].y + dy};
-    // Walls collision
+
+    // Check walls
     if(head.x<0 || head.x>=canvas.width/gridSize || head.y<0 || head.y>=canvas.height/gridSize){
-      gameOver=true;
+      gameOver = true;
       if(score>highscore) highscore=score;
-      setTimeout(resetGame,1000);
+      setTimeout(initGame,1000);
     }
-    // Self collision
-    for(var i=0;i<snake.length;i++){
+
+    // Check self-collision
+    var i;
+    for(i=0;i<snake.length;i++){
       if(snake[i].x===head.x && snake[i].y===head.y){
         gameOver=true;
         if(score>highscore) highscore=score;
-        setTimeout(resetGame,1000);
+        setTimeout(initGame,1000);
       }
     }
 
     if(!gameOver){
       snake.unshift(head);
+
       // Eat apple
       if(head.x===apple.x && head.y===apple.y){
-        score++;
-        updateScore();
-        // Place new apple avoiding snake
-        do {
-          apple={x:Math.floor(Math.random()*(canvas.width/gridSize)), y:Math.floor(Math.random()*(canvas.height/gridSize))};
-        } while(snake.some(seg => seg.x===apple.x && seg.y===apple.y));
-      }else{
+        score++; // Increment only when eating apple
+        if(score>highscore) highscore=score;
+        apple = generateApple();
+      } else {
         snake.pop();
       }
+      updateScore();
     }
   }
 
-  // Draw game
+  // Draw
   ctx.fillStyle="#111"; ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle="#0f0";
-  for(var i=0;i<snake.length;i++){
+  for(i=0;i<snake.length;i++){
     ctx.fillRect(snake[i].x*gridSize, snake[i].y*gridSize, gridSize, gridSize);
   }
-  ctx.fillStyle="#f00";
-  ctx.fillRect(apple.x*gridSize, apple.y*gridSize, gridSize, gridSize);
+  ctx.fillStyle="#f00"; ctx.fillRect(apple.x*gridSize, apple.y*gridSize, gridSize, gridSize);
 
   // Draw walls
-  ctx.strokeStyle="#fff";
-  ctx.lineWidth=2;
-  ctx.strokeRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.strokeRect(0,0,canvas.width,canvas.height);
 
-  // Game Over text in middle
+  // Game over text
   if(gameOver){
-    ctx.fillStyle="#f00";
-    ctx.font="20px monospace";
-    ctx.textAlign="center";
+    ctx.fillStyle="#f00"; ctx.font="20px monospace"; ctx.textAlign="center";
     ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2);
   }
 }
 
-setInterval(gameLoop,150);
+initGame();
+setInterval(gameLoop, 150);
 </script>
 </body>
 </html>
